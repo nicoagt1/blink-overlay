@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>BLINK - Win rate</title>
+<style>
+:root{--cyan:#38e1ff;--gold:#ffc83c;--red:#ff4d5e;--ink:#070b18}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{background:transparent}
+body{font-family:"Arial Black","Impact","Helvetica Neue",Arial,sans-serif;color:#fff;-webkit-font-smoothing:antialiased;overflow:hidden}
+.view{display:none}
+body.overlay #overlay{display:block}
+body.control #control{display:flex}
+body.control{overflow:auto;background:#050914}
+
+/* ---------- OVERLAY (1rem = largeur/23.2 : s'adapte a n'importe quelle taille) ---------- */
+#overlay{position:relative;width:23.2rem;padding:1rem 1.2rem .9rem;font-style:italic}
+#overlay .blob{position:absolute;left:.3rem;right:.3rem;top:.3rem;bottom:.3rem;background:rgba(7,11,24,.9);border:.22rem solid var(--cyan);border-radius:1.4rem;box-shadow:0 0 1.3rem rgba(56,225,255,.6),inset 0 0 1.5rem rgba(56,225,255,.2);transform:skewX(-4deg);transition:border-color .3s,box-shadow .3s}
+#overlay .in{position:relative;text-align:center}
+#overlay .head{display:flex;align-items:center;justify-content:center;gap:.5rem;font-size:1.25rem;letter-spacing:.18rem;color:var(--gold);text-shadow:0 .1rem 0 #000}
+#overlay .head svg{width:1.8rem;height:1.4rem}
+#overlay .pct{font-size:5.4rem;line-height:1.02;color:#fff;-webkit-text-stroke:.14rem #06101e;text-shadow:0 0 1.2rem rgba(56,225,255,.85),0 .25rem 0 #06101e;transition:transform .25s}
+#overlay .pct small{font-size:2.6rem;margin-left:.1rem}
+#overlay .row{display:flex;align-items:center;justify-content:center;gap:.8rem;margin-top:.2rem;font-size:1.7rem}
+#overlay .v{color:var(--cyan)} #overlay .d{color:var(--red)}
+#overlay .v,#overlay .d{text-shadow:0 .12rem 0 #000,0 0 .7rem currentColor}
+#overlay .streak{font-size:1.25rem;color:var(--gold);text-shadow:0 .1rem 0 #000;min-width:4rem}
+#overlay .dots{display:flex;justify-content:center;gap:.45rem;margin-top:.55rem}
+.dot{width:1.1rem;height:1.1rem;border-radius:50%;border:.14rem solid rgba(255,255,255,.25)}
+.dot.w{background:var(--cyan);border-color:#bff4ff;box-shadow:0 0 .6rem var(--cyan)}
+.dot.l{background:var(--red);border-color:#ffc2c8;box-shadow:0 0 .6rem var(--red)}
+#overlay.pop-w .blob{border-color:#7dffb9;box-shadow:0 0 2.6rem rgba(125,255,185,.9),inset 0 0 1.5rem rgba(125,255,185,.35)}
+#overlay.pop-l .blob{border-color:var(--red);box-shadow:0 0 2.6rem rgba(255,77,94,.9),inset 0 0 1.5rem rgba(255,77,94,.35)}
+#overlay.pop-w .pct,#overlay.pop-l .pct,#overlay.pop-n .pct{transform:scale(1.12)}
+
+/* ---------- CONTROLE (telephone) ---------- */
+#control{flex-direction:column;gap:14px;min-height:100vh;padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom));max-width:520px;margin:0 auto;font-style:italic}
+#control h1{font-size:20px;letter-spacing:3px;color:var(--gold);text-align:center}
+#control .stat{display:flex;justify-content:space-around;align-items:center;background:#0b1226;border:2px solid var(--cyan);border-radius:16px;padding:12px;box-shadow:0 0 18px rgba(56,225,255,.35)}
+#control .stat b{display:block;font-size:34px}
+#control .stat span{font-size:12px;letter-spacing:2px;color:#9fb4d6}
+#control .stat .v b{color:var(--cyan)} #control .stat .d b{color:var(--red)}
+#control .big{flex:1;min-height:20vh;border:none;border-radius:22px;font:inherit;font-size:34px;letter-spacing:2px;color:#031018;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .08s}
+#control .big:active{transform:scale(.97)}
+#bw{background:linear-gradient(180deg,#8ff3ff,#1fb5e6);box-shadow:0 0 24px rgba(56,225,255,.55)}
+#bl{background:linear-gradient(180deg,#ff8c98,#e0283d);color:#1a0407;box-shadow:0 0 24px rgba(255,77,94,.5)}
+#control .small{display:flex;gap:12px}
+#control .small button{flex:1;padding:16px;border-radius:14px;border:2px solid #34456b;background:#0b1226;color:#dbe7ff;font:inherit;font-size:16px;cursor:pointer}
+#control .dots{display:flex;justify-content:center;gap:7px}
+#control .dot{width:16px;height:16px}
+#status{text-align:center;font-size:12px;letter-spacing:1px;color:#8aa0c8}
+#status i{display:inline-block;width:9px;height:9px;border-radius:50%;background:#888;margin-right:6px}
+#status.on i{background:#3dffa0} #status.off i{background:var(--red)}
+</style>
+</head>
+<body>
+
+<div id="overlay" class="view">
+ <div class="blob"></div>
+ <div class="in">
+   <div class="head">
+     <svg viewBox="0 0 36 28"><path d="M3 24 L1 6 L10 14 L18 2 L26 14 L35 6 L33 24 Z" fill="#ffc83c" stroke="#06101e" stroke-width="2" stroke-linejoin="round"/><rect x="3" y="22" width="30" height="4" rx="1.5" fill="#e59a14" stroke="#06101e" stroke-width="1.5"/></svg>
+     <span>WIN RATE</span>
+   </div>
+   <div class="pct"><span id="o_pct">--</span><small>%</small></div>
+   <div class="row"><span class="v">V <span id="o_w">0</span></span><span class="d">D <span id="o_l">0</span></span><span class="streak" id="o_streak"></span></div>
+   <div class="dots" id="o_dots"></div>
+ </div>
+</div>
+
+<div id="control" class="view">
+ <h1>BLINK &bull; WIN RATE</h1>
+ <div class="stat">
+   <div class="v"><b id="c_w">0</b><span>VICTOIRES</span></div>
+   <div><b id="c_pct">--%</b><span>WIN RATE</span></div>
+   <div class="d"><b id="c_l">0</b><span>DEFAITES</span></div>
+ </div>
+ <div class="dots" id="c_dots"></div>
+ <button class="big" id="bw">VICTOIRE +1</button>
+ <button class="big" id="bl">DEFAITE +1</button>
+ <div class="small"><button id="bu">Annuler</button><button id="br">Reset</button></div>
+ <div id="status"><i></i><span>Connexion...</span></div>
+</div>
+
+<script>
+(function(){
+ // >>> Code secret du live : le meme dans l'overlay et dans la telecommande. Change-le si tu partages le fichier.
+ var TOPIC = 'blink-wr-07491a2a7b327ac95d3b';
+ var SERVER = 'https://ntfy.sh/';
+ var KEY = 'blink_wr_state_v1';
+
+ var role = location.hash.indexOf('control') > -1 ? 'control' : 'overlay';
+ document.body.className = role;
+ window.addEventListener('hashchange', function(){ location.reload(); });
+
+ var state = {t:0, a:''};
+ var seen = {};
+ var online = null;
+ var bc = null;
+ try { if (typeof BroadcastChannel !== 'undefined') bc = new BroadcastChannel('blink_wr'); } catch(e){}
+
+ function $(id){ return document.getElementById(id); }
+ function load(){
+   try { var s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && typeof s.a === 'string') state = {t:+s.t||0, a:s.a}; } catch(e){}
+ }
+ function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+
+ function stats(a){
+   var w=0,l=0,i;
+   for (i=0;i<a.length;i++){ if(a.charAt(i)==='w') w++; else l++; }
+   var tot=w+l, streak=0, last=a.charAt(a.length-1);
+   for (i=a.length-1;i>=0 && a.charAt(i)===last;i--) streak++;
+   return {w:w,l:l,pct: tot ? Math.round(w/tot*100) : null, streak:streak, last:last};
+ }
+
+ function dots(el,a){
+   var h='', s=a.slice(-10), i;
+   for (i=0;i<10-s.length;i++) h+='<span class="dot"></span>';
+   for (i=0;i<s.length;i++) h+='<span class="dot '+s.charAt(i)+'"></span>';
+   el.innerHTML=h;
+ }
+
+ var shown = null, raf = null;
+ function tween(target){
+   if (target===null){ $('o_pct').textContent='--'; shown=null; return; }
+   if (shown===null){ shown=target; $('o_pct').textContent=target; return; }
+   var from=shown, t0=Date.now(), dur=600;
+   if (raf) cancelAnimationFrame(raf);
+   (function step(){
+     var k=Math.min(1,(Date.now()-t0)/dur), v=Math.round(from+(target-from)*k);
+     $('o_pct').textContent=v; shown=v;
+     if (k<1) raf=requestAnimationFrame(step);
+   })();
+ }
+
+ var popTimer=null;
+ function pop(cls){
+   var o=$('overlay'); o.className='view '+cls;
+   if (popTimer) clearTimeout(popTimer);
+   popTimer=setTimeout(function(){ o.className='view'; }, 900);
+ }
+
+ var prevA = null;
+ function render(animate){
+   var s = stats(state.a);
+   if (role==='overlay'){
+     $('o_w').textContent=s.w; $('o_l').textContent=s.l;
+     $('o_streak').textContent = (s.last==='w' && s.streak>=2) ? '\uD83D\uDD25 x'+s.streak : '';
+     dots($('o_dots'), state.a);
+     tween(s.pct);
+     if (animate && prevA!==null){
+       if (state.a.length>prevA.length) pop(state.a.charAt(state.a.length-1)==='w'?'pop-w':'pop-l');
+       else pop('pop-n');
+     }
+   } else {
+     $('c_w').textContent=s.w; $('c_l').textContent=s.l;
+     $('c_pct').textContent = s.pct===null ? '--%' : s.pct+'%';
+     dots($('c_dots'), state.a);
+   }
+   prevA = state.a;
+ }
+
+ function adopt(j){
+   if (j && typeof j.a==='string' && (+j.t)>state.t){
+     state={t:+j.t, a:j.a.slice(-3000)}; save(); render(true);
+   }
+ }
+
+ function setStatus(){
+   if (role!=='control') return;
+   var el=$('status');
+   el.className = online ? 'on' : (online===false ? 'off' : '');
+   el.getElementsByTagName('span')[0].textContent = online ? 'Synchro a distance : connectee' : (online===false ? 'Hors ligne : mode local uniquement' : 'Connexion...');
+ }
+
+ function remote(body){
+   try {
+     fetch(SERVER+TOPIC,{method:'POST',body:body})
+       .then(function(r){ online=!!r.ok; setStatus(); })
+       .catch(function(){ online=false; setStatus(); });
+   } catch(e){}
+ }
+
+ function commit(a){
+   state={t:Math.max(Date.now(), state.t+1), a:a.slice(-3000)};
+   save();
+   var msg=JSON.stringify({wr:1,t:state.t,a:state.a});
+   try { if (bc) bc.postMessage(msg); } catch(e){}
+   remote(msg);
+   render(true);
+ }
+
+ function command(txt){
+   var c=(txt||'').toLowerCase().replace(/^\s+|\s+$/g,'');
+   if (c==='w'||c==='v'||c==='win'||c==='victoire') commit(state.a+'w');
+   else if (c==='l'||c==='d'||c==='loss'||c==='defaite'||c==='défaite') commit(state.a+'l');
+   else if (c==='u'||c==='undo'||c==='annuler') commit(state.a.slice(0,-1));
+   else if (c==='reset') commit('');
+ }
+
+ function onRemoteMessage(m){
+   if (!m || m.event!=='message' || seen[m.id]) return;
+   seen[m.id]=1;
+   var txt=(m.message||'').replace(/^\s+|\s+$/g,''), j=null;
+   if (txt.charAt(0)==='{'){ try { j=JSON.parse(txt); } catch(e){} }
+   if (j && j.wr){ adopt(j); return; }
+   if (role==='overlay') command(txt);
+ }
+
+ function connect(){
+   try {
+     var es=new EventSource(SERVER+TOPIC+'/sse');
+     es.onopen=function(){ online=true; setStatus(); };
+     es.onerror=function(){ online=false; setStatus(); };
+     es.onmessage=function(e){ var m=null; try { m=JSON.parse(e.data); } catch(x){} onRemoteMessage(m); };
+   } catch(e){ online=false; setStatus(); }
+ }
+
+ function restore(){
+   try {
+     fetch(SERVER+TOPIC+'/json?poll=1&since=all').then(function(r){ return r.text(); }).then(function(t){
+       var lines=t.split('\n'), i, last=null;
+       for (i=0;i<lines.length;i++){
+         if (!lines[i]) continue;
+         var m=null; try { m=JSON.parse(lines[i]); } catch(e){}
+         if (m && m.event==='message'){
+           seen[m.id]=1;
+           var x=(m.message||'').replace(/^\s+|\s+$/g,'');
+           if (x.charAt(0)==='{'){ try { var j=JSON.parse(x); if (j && j.wr) last=j; } catch(e){} }
+         }
+       }
+       if (last) adopt(last);
+     }).catch(function(){});
+   } catch(e){}
+ }
+
+ // synchro locale (meme navigateur : dock OBS <-> source navigateur)
+ if (bc) bc.onmessage=function(e){ var j=null; try { j=JSON.parse(e.data); } catch(x){} adopt(j); };
+ window.addEventListener('storage', function(e){
+   if (e.key===KEY && e.newValue){ var j=null; try { j=JSON.parse(e.newValue); } catch(x){} adopt(j); }
+ });
+
+ function fit(){ document.documentElement.style.fontSize = (window.innerWidth/23.2)+'px'; }
+ if (role==='overlay'){ fit(); window.addEventListener('resize', fit); }
+
+ load(); render(false); setStatus();
+ connect(); restore();
+
+ if (role==='control'){
+   function buzz(){ try { if (navigator.vibrate) navigator.vibrate(25); } catch(e){} }
+   $('bw').onclick=function(){ buzz(); commit(state.a+'w'); };
+   $('bl').onclick=function(){ buzz(); commit(state.a+'l'); };
+   $('bu').onclick=function(){ buzz(); commit(state.a.slice(0,-1)); };
+   var armed=false, tm=null;
+   $('br').onclick=function(){
+     if (!armed){ armed=true; this.textContent='Confirmer ?'; tm=setTimeout(function(){ armed=false; $('br').textContent='Reset'; },3000); }
+     else { clearTimeout(tm); armed=false; this.textContent='Reset'; buzz(); commit(''); }
+   };
+   document.addEventListener('keydown', function(e){
+     var k=(e.key||'').toLowerCase();
+     if (k==='w'||k==='v') commit(state.a+'w'); else if (k==='l'||k==='d') commit(state.a+'l'); else if (k==='u'||k==='backspace') commit(state.a.slice(0,-1));
+   });
+ }
+})();
+</script>
+</body>
+</html>
