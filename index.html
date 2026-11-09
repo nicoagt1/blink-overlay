@@ -85,7 +85,7 @@ body.control{overflow:auto;background:#050914}
  <div class="dots" id="c_dots"></div>
  <div class="elo-control">
    <label class="elo-label" for="c_elo"><span>NIVEAU ELO (1500–4000)</span></label>
-   <input id="c_elo" type="number" min="1500" max="4000" step="1" value="1500" aria-label="Niveau ELO">
+   <input id="c_elo" type="text" inputmode="numeric" pattern="[0-9]*" value="1500" aria-label="Niveau ELO">
  </div>
  <button class="big" id="bw">VICTOIRE +1</button>
  <button class="big" id="bl">DEFAITE +1</button>
@@ -270,12 +270,13 @@ body.control{overflow:auto;background:#050914}
    $('bu').onclick=function(){ buzz(); commit(state.a.slice(0,-1)); };
    $('c_elo').oninput=function(){ this.setCustomValidity(''); };
    $('c_elo').onchange=function(){
-     if (this.value==='' || !this.checkValidity()){
+     var value=Number(this.value);
+     if (!/^\d+$/.test(this.value) || value<1500 || value>4000){
        this.setCustomValidity('Saisir un ELO entier entre 1500 et 4000.');
        this.reportValidity();
        return;
      }
-     buzz(); commit(state.a,this.value);
+     buzz(); commit(state.a,value);
    };
    var armed=false, tm=null;
    $('br').onclick=function(){
