@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>BLINK - Win rate</title>
+<title>BLINK - Win rate et ELO</title>
 <style>
 :root{--cyan:#38e1ff;--gold:#ffc83c;--red:#ff4d5e;--ink:#070b18}
 *{box-sizing:border-box;margin:0;padding:0}
@@ -27,6 +27,8 @@ body.control{overflow:auto;background:#050914}
 #overlay .v,#overlay .d{text-shadow:0 .12rem 0 #000,0 0 .7rem currentColor}
 #overlay .streak{font-size:1.25rem;color:var(--gold);text-shadow:0 .1rem 0 #000;min-width:4rem}
 #overlay .dots{display:flex;justify-content:center;gap:.45rem;margin-top:.55rem}
+#overlay .elo{margin-top:.45rem;font-size:1rem;letter-spacing:.12rem;color:#9fb4d6;text-shadow:0 .1rem 0 #000}
+#overlay .elo b{color:var(--gold);font-size:1.25rem}
 .dot{width:1.1rem;height:1.1rem;border-radius:50%;border:.14rem solid rgba(255,255,255,.25)}
 .dot.w{background:var(--cyan);border-color:#bff4ff;box-shadow:0 0 .6rem var(--cyan)}
 .dot.l{background:var(--red);border-color:#ffc2c8;box-shadow:0 0 .6rem var(--red)}
@@ -41,6 +43,9 @@ body.control{overflow:auto;background:#050914}
 #control .stat b{display:block;font-size:34px}
 #control .stat span{font-size:12px;letter-spacing:2px;color:#9fb4d6}
 #control .stat .v b{color:var(--cyan)} #control .stat .d b{color:var(--red)}
+#control .elo-control{background:#0b1226;border:2px solid #34456b;border-radius:14px;padding:12px 16px}
+#control .elo-label{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:12px;letter-spacing:2px;color:#9fb4d6}
+#control #c_elo{width:140px;padding:8px;border:1px solid #34456b;border-radius:8px;background:#050914;color:var(--gold);font:inherit;font-size:20px;text-align:right}
 #control .big{flex:1;min-height:20vh;border:none;border-radius:22px;font:inherit;font-size:34px;letter-spacing:2px;color:#031018;cursor:pointer;-webkit-tap-highlight-color:transparent;transition:transform .08s}
 #control .big:active{transform:scale(.97)}
 #bw{background:linear-gradient(180deg,#8ff3ff,#1fb5e6);box-shadow:0 0 24px rgba(56,225,255,.55)}
@@ -66,6 +71,7 @@ body.control{overflow:auto;background:#050914}
    <div class="pct"><span id="o_pct">--</span><small>%</small></div>
    <div class="row"><span class="v">V <span id="o_w">0</span></span><span class="d">D <span id="o_l">0</span></span><span class="streak" id="o_streak"></span></div>
    <div class="dots" id="o_dots"></div>
+   <div class="elo">ELO <b id="o_elo">1500</b></div>
  </div>
 </div>
 
@@ -77,6 +83,10 @@ body.control{overflow:auto;background:#050914}
    <div class="d"><b id="c_l">0</b><span>DEFAITES</span></div>
  </div>
  <div class="dots" id="c_dots"></div>
+ <div class="elo-control">
+   <label class="elo-label" for="c_elo"><span>NIVEAU ELO (1500–4000)</span></label>
+   <input id="c_elo" type="number" min="1500" max="4000" step="1" value="1500" aria-label="Niveau ELO">
+ </div>
  <button class="big" id="bw">VICTOIRE +1</button>
  <button class="big" id="bl">DEFAITE +1</button>
  <div class="small"><button id="bu">Annuler</button><button id="br">Reset</button></div>
@@ -94,7 +104,7 @@ body.control{overflow:auto;background:#050914}
  document.body.className = role;
  window.addEventListener('hashchange', function(){ location.reload(); });
 
- var state = {t:0, a:''};
+ var state = {t:0, a:'', elo:1500};
  var seen = {};
  var online = null;
  var bc = null;
@@ -102,9 +112,13 @@ body.control{overflow:auto;background:#050914}
 
  function $(id){ return document.getElementById(id); }
  function load(){
-   try { var s = JSON.parse(localStorage.getItem(KEY) || 'null'); if (s && typeof s.a === 'string') state = {t:+s.t||0, a:s.a}; } catch(e){}
+   try {
+     var s = JSON.parse(localStorage.getItem(KEY) || 'null');
+     if (s && typeof s.a === 'string') state = {t:+s.t||0, a:s.a, elo:clampElo(s.elo===undefined ? 1500 : s.elo)};
+   } catch(e){}
  }
  function save(){ try { localStorage.setItem(KEY, JSON.stringify(state)); } catch(e){} }
+ function clampElo(value){ return Math.max(1500, Math.min(4000, Math.round(+value||1500))); }
 
  function stats(a){
    var w=0,l=0,i;
@@ -149,6 +163,7 @@ body.control{overflow:auto;background:#050914}
      $('o_streak').textContent = (s.last==='w' && s.streak>=2) ? '\uD83D\uDD25 x'+s.streak : '';
      dots($('o_dots'), state.a);
      tween(s.pct);
+     $('o_elo').textContent=state.elo;
      if (animate && prevA!==null){
        if (state.a.length>prevA.length) pop(state.a.charAt(state.a.length-1)==='w'?'pop-w':'pop-l');
        else pop('pop-n');
@@ -157,13 +172,14 @@ body.control{overflow:auto;background:#050914}
      $('c_w').textContent=s.w; $('c_l').textContent=s.l;
      $('c_pct').textContent = s.pct===null ? '--%' : s.pct+'%';
      dots($('c_dots'), state.a);
+     $('c_elo').value=state.elo;
    }
    prevA = state.a;
  }
 
  function adopt(j){
    if (j && typeof j.a==='string' && (+j.t)>state.t){
-     state={t:+j.t, a:j.a.slice(-3000)}; save(); render(true);
+     state={t:+j.t, a:j.a.slice(-3000), elo:j.elo===undefined ? state.elo : clampElo(j.elo)}; save(); render(true);
    }
  }
 
@@ -182,10 +198,10 @@ body.control{overflow:auto;background:#050914}
    } catch(e){}
  }
 
- function commit(a){
-   state={t:Math.max(Date.now(), state.t+1), a:a.slice(-3000)};
+ function commit(a, elo){
+   state={t:Math.max(Date.now(), state.t+1), a:a.slice(-3000), elo:clampElo(elo===undefined ? state.elo : elo)};
    save();
-   var msg=JSON.stringify({wr:1,t:state.t,a:state.a});
+   var msg=JSON.stringify({wr:1,t:state.t,a:state.a,elo:state.elo});
    try { if (bc) bc.postMessage(msg); } catch(e){}
    remote(msg);
    render(true);
@@ -252,6 +268,15 @@ body.control{overflow:auto;background:#050914}
    $('bw').onclick=function(){ buzz(); commit(state.a+'w'); };
    $('bl').onclick=function(){ buzz(); commit(state.a+'l'); };
    $('bu').onclick=function(){ buzz(); commit(state.a.slice(0,-1)); };
+   $('c_elo').oninput=function(){ this.setCustomValidity(''); };
+   $('c_elo').onchange=function(){
+     if (this.value==='' || !this.checkValidity()){
+       this.setCustomValidity('Saisir un ELO entier entre 1500 et 4000.');
+       this.reportValidity();
+       return;
+     }
+     buzz(); commit(state.a,this.value);
+   };
    var armed=false, tm=null;
    $('br').onclick=function(){
      if (!armed){ armed=true; this.textContent='Confirmer ?'; tm=setTimeout(function(){ armed=false; $('br').textContent='Reset'; },3000); }
