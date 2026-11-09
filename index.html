@@ -85,7 +85,7 @@ body.control{overflow:auto;background:#050914}
  <div class="dots" id="c_dots"></div>
  <div class="elo-control">
    <label class="elo-label" for="c_elo"><span>NIVEAU ELO (1500–4000)</span></label>
-   <input id="c_elo" type="text" inputmode="numeric" pattern="[0-9]*" value="1500" aria-label="Niveau ELO">
+   <input id="c_elo" type="text" inputmode="numeric" pattern="[0-9]*" value="1500" aria-label="Niveau ELO" autocomplete="off" autocorrect="off" spellcheck="false">
  </div>
  <button class="big" id="bw">VICTOIRE +1</button>
  <button class="big" id="bl">DEFAITE +1</button>
@@ -172,7 +172,8 @@ body.control{overflow:auto;background:#050914}
      $('c_w').textContent=s.w; $('c_l').textContent=s.l;
      $('c_pct').textContent = s.pct===null ? '--%' : s.pct+'%';
      dots($('c_dots'), state.a);
-     $('c_elo').value=state.elo;
+     // Do not overwrite an ELO value being edited when a sync update arrives.
+     if (document.activeElement!==$('c_elo')) $('c_elo').value=state.elo;
    }
    prevA = state.a;
  }
@@ -287,7 +288,7 @@ body.control{overflow:auto;background:#050914}
      var target=e.target;
      if (target && (target.tagName==='INPUT' || target.tagName==='TEXTAREA' || target.isContentEditable)) return;
      var k=(e.key||'').toLowerCase();
-     if (k==='w'||k==='v') commit(state.a+'w'); else if (k==='l'||k==='d') commit(state.a+'l'); else if (k==='u'||k==='backspace') commit(state.a.slice(0,-1));
+     if (k==='w'||k==='v') commit(state.a+'w'); else if (k==='l'||k==='d') commit(state.a+'l'); else if (k==='u') commit(state.a.slice(0,-1));
    });
  }
 })();
