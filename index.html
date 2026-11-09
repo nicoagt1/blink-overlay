@@ -284,6 +284,8 @@ body.control{overflow:auto;background:#050914}
      else { clearTimeout(tm); armed=false; this.textContent='Reset'; buzz(); commit(''); }
    };
    document.addEventListener('keydown', function(e){
+     var target=e.target;
+     if (target && (target.tagName==='INPUT' || target.tagName==='TEXTAREA' || target.isContentEditable)) return;
      var k=(e.key||'').toLowerCase();
      if (k==='w'||k==='v') commit(state.a+'w'); else if (k==='l'||k==='d') commit(state.a+'l'); else if (k==='u'||k==='backspace') commit(state.a.slice(0,-1));
    });
